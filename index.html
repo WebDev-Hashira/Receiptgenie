@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReceiptGenie - Professional Receipt Generator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Poppins:wght@600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="lib/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoVBL5gI9kLmbG0C+wFjrRxASpD_gA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+<body>
+
+    <main class="app-container">
+        
+        <header class="app-header">
+            <h1 class="app-title">🧾 ReceiptGenie</h1>
+            <p class="app-subtitle">Create and download professional receipts in seconds.</p>
+        </header>
+
+        <div class="app-main-content">
+
+            <section class="form-section">
+                <form id="receipt-form" action="#" method="POST">
+                    
+                    <div class="form-card">
+                        <h2 class="form-card-title">Seller Details</h2>
+                        <div class="form-group">
+                            <label for="seller-name">Business / Seller Name</label>
+                            <input type="text" id="seller-name" placeholder="e.g., Acme Inc." required>
+                        </div>
+                    </div>
+
+                    <div class="form-card">
+                        <h2 class="form-card-title">Buyer Details</h2>
+                        <div class="form-group">
+                            <label for="buyer-name">Buyer Name (Optional)</label>
+                            <input type="text" id="buyer-name" placeholder="e.g., John Doe">
+                        </div>
+                    </div>
+
+                    <div class="form-card">
+                        <h2 class="form-card-title">Items</h2>
+                        <div id="item-list">
+                            <div class="item-row">
+                                <div class="form-group item-name">
+                                    <label>Item Name</label>
+                                    <input type="text" class="item-name-input" placeholder="e.g., Web Design Service" required>
+                                </div>
+                                <div class="form-group item-price">
+                                    <label>Price</label>
+                                    <input type="number" class="item-price-input" placeholder="1200.00" step="0.01" min="0" required>
+                                </div>
+                                <button type="button" class="remove-item-btn" aria-label="Remove Item">&times;</button>
+                            </div>
+                        </div>
+                        <button type="button" id="add-item-btn" class="add-item-button">+ Add Item</button>
+                    </div>
+
+                    <div class="form-card">
+                        <h2 class="form-card-title">Additional Details</h2>
+                         <div class="form-group">
+                            <label for="receipt-date">Receipt Date</label>
+                            <input type="date" id="receipt-date">
+                        </div>
+                        <div class="form-group">
+                            <label for="notes">Notes / Footer Message (Optional)</label>
+                            <textarea id="notes" rows="3" placeholder="e.g., Thank you for your business!"></textarea>
+                        </div>
+                    </div>
+
+                </form>
+            </section>
+
+            <section class="preview-section">
+                <div class="preview-container">
+                    <h2 class="preview-title">Live Preview</h2>
+                    <div id="receipt-preview" aria-live="polite">
+                        <header class="receipt-header">
+                            <h3 id="preview-seller-name">BUSINESS NAME</h3>
+                        </header>
+                        <section class="receipt-details">
+                            <div class="detail-item">
+                                <span>Date:</span>
+                                <span id="preview-date">--/--/----</span>
+                            </div>
+                            <div class="detail-item">
+                                <span>Receipt ID:</span>
+                                <span id="preview-receipt-id">#00000</span>
+                            </div>
+                            <div class="detail-item" id="buyer-info-preview" style="display: none;">
+                                <span>Bill to:</span>
+                                <span id="preview-buyer-name"></span>
+                            </div>
+                        </section>
+                        <table class="receipt-table">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th class="text-right">Price</th>
+                                </tr>
+                            </thead>
+                            <tbody id="preview-item-list">
+                                <tr>
+                                    <td>Sample Item</td>
+                                    <td class="text-right">$0.00</td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr class="total-row">
+                                    <td><strong>Total</strong></td>
+                                    <td class="text-right"><strong id="preview-total">$0.00</strong></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                        <footer class="receipt-footer">
+                            <p id="preview-notes"></p>
+                        </footer>
+                    </div>
+                     <button id="download-btn" class="download-button">Download Receipt as Image</button>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <script src="main.js"></script>
+
+</body>
+</html>
