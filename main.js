@@ -121,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Handles downloading the receipt preview as a PNG image.
-     * UPDATED to fix blank image issue by temporarily changing CSS.
+     * DEFINITIVE FIX: Waits for fonts to load and resets sticky positioning.
      */
     function downloadReceipt() {
         const previewSection = document.querySelector('.preview-section');
@@ -129,36 +129,42 @@ document.addEventListener('DOMContentLoaded', () => {
         // Temporarily modify styles for accurate capture
         const originalPosition = previewSection.style.position;
         const originalTop = previewSection.style.top;
-        previewSection.style.position = 'static'; // Remove sticky positioning
+        previewSection.style.position = 'static';
         previewSection.style.top = 'auto';
 
-        // Use a brief timeout to allow the browser to apply style changes
-        setTimeout(() => {
-            html2canvas(receiptPreview, {
-                scale: 2, 
-                useCORS: true,
-                backgroundColor: '#ffffff'
-            }).then(canvas => {
-                // Restore original styles immediately after capture
-                previewSection.style.position = originalPosition;
-                previewSection.style.top = originalTop;
+        // The most reliable fix: wait for all fonts to be loaded.
+        document.fonts.ready.then(() => {
+            setTimeout(() => { // A small timeout allows the browser to repaint with the new fonts
+                html2canvas(receiptPreview, {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: '#ffffff',
+                    scrollX: 0, // Ensure capture starts at the top-left
+                    scrollY: 0,
+                    windowWidth: document.documentElement.offsetWidth,
+                    windowHeight: document.documentElement.offsetHeight
+                }).then(canvas => {
+                    // Restore original styles immediately after capture
+                    previewSection.style.position = originalPosition;
+                    previewSection.style.top = originalTop;
 
-                // Create a link element to trigger the download
-                const link = document.createElement('a');
-                const sellerName = (document.getElementById('seller-name').value || 'receipt').replace(/ /g, '_');
-                const date = new Date().toISOString().split('T')[0];
-                link.download = `ReceiptGenie_${sellerName}_${date}.png`;
-                link.href = canvas.toDataURL('image/png');
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            }).catch(err => {
-                // Restore styles even if there's an error
-                previewSection.style.position = originalPosition;
-                previewSection.style.top = originalTop;
-                console.error('Oops, something went wrong!', err);
-                alert('Error generating receipt image. Please check the console for details.');
-            });
-        }, 100); // 100ms timeout
+                    // Create a link element to trigger the download
+                    const link = document.createElement('a');
+                    const sellerName = (document.getElementById('seller-name').value || 'receipt').replace(/ /g, '_');
+                    const date = new Date().toISOString().split('T')[0];
+                    link.download = `ReceiptGenie_${sellerName}_${date}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }).catch(err => {
+                    // Restore styles even if there's an error
+                    previewSection.style.position = originalPosition;
+                    previewSection.style.top = originalTop;
+                    console.error('Oops, something went wrong with html2canvas!', err);
+                    alert('Error generating receipt image. Please check the console for details.');
+                });
+            }, 150); // 150ms timeout seems to be a safe value
+        });
     }
 });
