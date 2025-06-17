@@ -16,14 +16,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const previewTotal = document.getElementById('preview-total');
     const previewNotes = document.getElementById('preview-notes');
     
-    const receiptPreview = document.getElementById('receipt-preview');
-
     // === INITIAL SETUP ===
-    // Set default date to today
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('receipt-date').value = today;
 
-    // Generate a random receipt ID on load
     const initialReceiptId = `#${Math.floor(10000 + Math.random() * 90000)}`;
     previewReceiptId.textContent = initialReceiptId;
     
@@ -31,7 +27,6 @@ document.addEventListener('DOMContentLoaded', () => {
     receiptForm.addEventListener('input', updatePreview);
     addItemBtn.addEventListener('click', addItemRow);
     
-    // Use event delegation for removing items
     itemList.addEventListener('click', (e) => {
         if (e.target && e.target.classList.contains('remove-item-btn')) {
             if (itemList.children.length > 1) {
@@ -41,16 +36,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    downloadBtn.addEventListener('click', downloadReceipt);
+    downloadBtn.addEventListener('click', downloadReceiptAsPDF);
 
     // Initial call to populate the preview
     updatePreview();
 
     // === FUNCTIONS ===
 
-    /**
-     * Adds a new item row to the form.
-     */
     function addItemRow() {
         const newItemRow = document.createElement('div');
         newItemRow.className = 'item-row';
@@ -68,15 +60,10 @@ document.addEventListener('DOMContentLoaded', () => {
         itemList.appendChild(newItemRow);
     }
 
-    /**
-     * Main function to update the live preview based on form inputs.
-     */
     function updatePreview() {
-        // Update Seller Name
         const sellerName = document.getElementById('seller-name').value;
         previewSellerName.textContent = sellerName || 'BUSINESS NAME';
         
-        // Update Buyer Name
         const buyerName = document.getElementById('buyer-name').value;
         if (buyerName) {
             previewBuyerName.textContent = buyerName;
@@ -85,27 +72,19 @@ document.addEventListener('DOMContentLoaded', () => {
             buyerInfoPreview.style.display = 'none';
         }
 
-        // Update Date
         const receiptDate = document.getElementById('receipt-date').value;
         previewDate.textContent = receiptDate ? new Date(receiptDate).toLocaleDateString() : '--/--/----';
 
-        // Update Notes
         previewNotes.textContent = document.getElementById('notes').value;
 
-        // Update Items and Calculate Total
         previewItemList.innerHTML = '';
         let total = 0;
         const itemRows = itemList.querySelectorAll('.item-row');
         
         itemRows.forEach(row => {
-            const nameInput = row.querySelector('.item-name-input');
-            const priceInput = row.querySelector('.item-price-input');
-            const name = nameInput.value || 'Unnamed Item';
-            const price = parseFloat(priceInput.value) || 0;
-            
-            if (price > 0) {
-                 total += price;
-            }
+            const name = row.querySelector('.item-name-input').value || 'Unnamed Item';
+            const price = parseFloat(row.querySelector('.item-price-input').value) || 0;
+            if (price > 0) total += price;
 
             const previewRow = document.createElement('tr');
             previewRow.innerHTML = `
@@ -115,56 +94,108 @@ document.addEventListener('DOMContentLoaded', () => {
             previewItemList.appendChild(previewRow);
         });
 
-        // Update Total
         previewTotal.textContent = `$${total.toFixed(2)}`;
     }
 
     /**
-     * Handles downloading the receipt preview as a PNG image.
-     * DEFINITIVE FIX: Waits for fonts to load and resets sticky positioning.
+     * NEW FUNCTION: Generates and downloads a PDF using jsPDF.
      */
-    function downloadReceipt() {
-        const previewSection = document.querySelector('.preview-section');
-        
-        // Temporarily modify styles for accurate capture
-        const originalPosition = previewSection.style.position;
-        const originalTop = previewSection.style.top;
-        previewSection.style.position = 'static';
-        previewSection.style.top = 'auto';
-
-        // The most reliable fix: wait for all fonts to be loaded.
-        document.fonts.ready.then(() => {
-            setTimeout(() => { // A small timeout allows the browser to repaint with the new fonts
-                html2canvas(receiptPreview, {
-                    scale: 2,
-                    useCORS: true,
-                    backgroundColor: '#ffffff',
-                    scrollX: 0, // Ensure capture starts at the top-left
-                    scrollY: 0,
-                    windowWidth: document.documentElement.offsetWidth,
-                    windowHeight: document.documentElement.offsetHeight
-                }).then(canvas => {
-                    // Restore original styles immediately after capture
-                    previewSection.style.position = originalPosition;
-                    previewSection.style.top = originalTop;
-
-                    // Create a link element to trigger the download
-                    const link = document.createElement('a');
-                    const sellerName = (document.getElementById('seller-name').value || 'receipt').replace(/ /g, '_');
-                    const date = new Date().toISOString().split('T')[0];
-                    link.download = `ReceiptGenie_${sellerName}_${date}.png`;
-                    link.href = canvas.toDataURL('image/png');
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                }).catch(err => {
-                    // Restore styles even if there's an error
-                    previewSection.style.position = originalPosition;
-                    previewSection.style.top = originalTop;
-                    console.error('Oops, something went wrong with html2canvas!', err);
-                    alert('Error generating receipt image. Please check the console for details.');
-                });
-            }, 150); // 150ms timeout seems to be a safe value
+    function downloadReceiptAsPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({
+            orientation: 'p',
+            unit: 'mm',
+            format: 'a4'
         });
+
+        // --- Get form data ---
+        const sellerName = document.getElementById('seller-name').value || 'Business Name';
+        const buyerName = document.getElementById('buyer-name').value;
+        const receiptDate = document.getElementById('receipt-date').value ? new Date(document.getElementById('receipt-date').value).toLocaleDateString() : 'N/A';
+        const receiptId = previewReceiptId.textContent;
+        const notes = document.getElementById('notes').value;
+        
+        // --- Document constants ---
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const margin = 15;
+        let y = margin;
+
+        // --- Build the PDF ---
+
+        // 1. Seller Name (Title)
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(22);
+        doc.text(sellerName, pageWidth / 2, y, { align: 'center' });
+        y += 12;
+
+        // 2. Sub-details (Date, Receipt ID, Buyer)
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        doc.text(`Date: ${receiptDate}`, margin, y);
+        doc.text(`Receipt ID: ${receiptId}`, pageWidth - margin, y, { align: 'right' });
+        y += 7;
+        if (buyerName) {
+            doc.text(`Bill to: ${buyerName}`, margin, y);
+            y += 7;
+        }
+        y += 5; // Extra space
+
+        // 3. Line separator
+        doc.setDrawColor(180); // Light grey
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 8;
+
+        // 4. Table Header
+        doc.setFont('helvetica', 'bold');
+        doc.text('Item Description', margin, y);
+        doc.text('Price', pageWidth - margin, y, { align: 'right' });
+        y += 7;
+        doc.setDrawColor(220); // Lighter grey
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 8;
+
+        // 5. Table Items
+        doc.setFont('helvetica', 'normal');
+        let total = 0;
+        const itemRows = itemList.querySelectorAll('.item-row');
+        itemRows.forEach(row => {
+            const name = row.querySelector('.item-name-input').value || 'Unnamed Item';
+            const price = parseFloat(row.querySelector('.item-price-input').value) || 0;
+            total += price;
+
+            doc.text(name, margin, y);
+            doc.text(`$${price.toFixed(2)}`, pageWidth - margin, y, { align: 'right' });
+            y += 8;
+        });
+        
+        // 6. Total
+        doc.setDrawColor(180); // Light grey
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 8;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.text('Total', margin, y);
+        doc.text(`$${total.toFixed(2)}`, pageWidth - margin, y, { align: 'right' });
+        y += 15;
+
+        // 7. Notes
+        if (notes) {
+            doc.setFont('helvetica', 'italic');
+            doc.setFontSize(10);
+            doc.setTextColor(100); // Grey text
+            // The splitTextToSize is important for handling multiline notes
+            const splitNotes = doc.splitTextToSize(notes, pageWidth - (margin * 2));
+            doc.text(splitNotes, margin, y);
+        }
+        
+        // 8. Footer
+        doc.setFontSize(9);
+        doc.setTextColor(150);
+        doc.text(`Generated with ReceiptGenie`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+
+        // --- Save the PDF ---
+        const pdfFileName = `Receipt_${sellerName.replace(/ /g, '_')}_${receiptId}.pdf`;
+        doc.save(pdfFileName);
     }
 });
