@@ -34,7 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Use event delegation for removing items
     itemList.addEventListener('click', (e) => {
         if (e.target && e.target.classList.contains('remove-item-btn')) {
-            // Prevent removing the last item
             if (itemList.children.length > 1) {
                 e.target.closest('.item-row').remove();
                 updatePreview();
@@ -122,36 +121,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Handles downloading the receipt preview as a PNG image.
+     * UPDATED to fix blank image issue by temporarily changing CSS.
      */
     function downloadReceipt() {
-        // Use html2canvas to capture the #receipt-preview div
-        html2canvas(receiptPreview, {
-            scale: 2, // Higher scale for better resolution
-            useCORS: true, // If you were using external images
-            backgroundColor: '#ffffff' // Ensure background is white
-        }).then(canvas => {
-            // Create a link element
-            const link = document.createElement('a');
-            
-            // Set the download attribute with a filename
-            const sellerName = document.getElementById('seller-name').value.replace(/ /g, '_') || 'receipt';
-            const date = new Date().toISOString().split('T')[0];
-            link.download = `ReceiptGenie_${sellerName}_${date}.png`;
-            
-            // Set the href to the canvas's data URL
-            link.href = canvas.toDataURL('image/png');
-            
-            // Append the link to the body (required for Firefox)
-            document.body.appendChild(link);
-            
-            // Programmatically click the link to trigger the download
-            link.click();
-            
-            // Remove the link from the body
-            document.body.removeChild(link);
-        }).catch(err => {
-            console.error('Oops, something went wrong!', err);
-            alert('Error generating receipt image. Please try again.');
-        });
+        const previewSection = document.querySelector('.preview-section');
+        
+        // Temporarily modify styles for accurate capture
+        const originalPosition = previewSection.style.position;
+        const originalTop = previewSection.style.top;
+        previewSection.style.position = 'static'; // Remove sticky positioning
+        previewSection.style.top = 'auto';
+
+        // Use a brief timeout to allow the browser to apply style changes
+        setTimeout(() => {
+            html2canvas(receiptPreview, {
+                scale: 2, 
+                useCORS: true,
+                backgroundColor: '#ffffff'
+            }).then(canvas => {
+                // Restore original styles immediately after capture
+                previewSection.style.position = originalPosition;
+                previewSection.style.top = originalTop;
+
+                // Create a link element to trigger the download
+                const link = document.createElement('a');
+                const sellerName = (document.getElementById('seller-name').value || 'receipt').replace(/ /g, '_');
+                const date = new Date().toISOString().split('T')[0];
+                link.download = `ReceiptGenie_${sellerName}_${date}.png`;
+                link.href = canvas.toDataURL('image/png');
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }).catch(err => {
+                // Restore styles even if there's an error
+                previewSection.style.position = originalPosition;
+                previewSection.style.top = originalTop;
+                console.error('Oops, something went wrong!', err);
+                alert('Error generating receipt image. Please check the console for details.');
+            });
+        }, 100); // 100ms timeout
     }
 });
