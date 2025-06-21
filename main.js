@@ -118,130 +118,154 @@ document.addEventListener('DOMContentLoaded', () => {
         previewTotal.textContent = `₦${total.toFixed(2)}`;
     }
 
-    function downloadReceiptAsPDF() {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF({
-            orientation: 'p',
-            unit: 'mm',
-            format: 'a4'
+    /**
+     * Converts a file to a base64 Data URL.
+     * @param {File} file The file to convert.
+     * @returns {Promise<string|null>} A promise that resolves with the data URL.
+     */
+    function loadImage(file) {
+        return new Promise((resolve, reject) => {
+            if (!file) {
+                resolve(null);
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = (err) => reject(err);
+            reader.readAsDataURL(file);
         });
+    }
 
-        // --- Get form data ---
-        const sellerName = document.getElementById('seller-name').value || 'Business Name';
-        const buyerName = document.getElementById('buyer-name').value;
-        const receiptDate = document.getElementById('receipt-date').value ? new Date(document.getElementById('receipt-date').value).toLocaleDateString() : 'N/A';
-        const receiptId = previewReceiptId.textContent;
-        const notes = document.getElementById('notes').value;
-        const logoFile = logoUpload.files[0];
+    /**
+     * REWRITTEN PDF GENERATION FUNCTION
+     * Generates and downloads a PDF with a clean, dynamic layout.
+     */
+    async function downloadReceiptAsPDF() {
+        try {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
 
-        // --- Document constants ---
-        const pageHeight = doc.internal.pageSize.getHeight();
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const margin = 15;
-        let y = margin;
+            // --- Get form data ---
+            const sellerName = document.getElementById('seller-name').value || 'Business Name';
+            const buyerName = document.getElementById('buyer-name').value;
+            const receiptDate = document.getElementById('receipt-date').value ? new Date(document.getElementById('receipt-date').value).toLocaleDateString() : 'N/A';
+            const receiptId = previewReceiptId.textContent;
+            const notes = document.getElementById('notes').value;
+            const logoFile = logoUpload.files[0];
+            const logoDataURL = await loadImage(logoFile);
 
-        const addLogoAndContinue = (logoDataURL) => {
+            // --- Document Layout Constants ---
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = 15;
+            const contentWidth = pageWidth - margin * 2;
+            const priceColumnX = contentWidth * 0.75 + margin; // Price starts at 75% of content width
+            const itemColumnWidth = contentWidth * 0.70; // Item description can take up 70% of width
+            const lineHeight = 5; // mm
+            const rowGap = 3; // mm
+            let y = margin; // Current Y position
+
+            // --- 1. Add Logo (if it exists) ---
             if (logoDataURL) {
                 const img = new Image();
                 img.src = logoDataURL;
-                img.onload = () => {
-                    const logoMaxWidth = 40;
-                    const aspectRatio = img.width / img.height;
-                    const logoWidth = logoMaxWidth;
-                    const logoHeight = logoWidth / aspectRatio;
-                    doc.addImage(logoDataURL, 'PNG', pageWidth / 2 - (logoWidth / 2), y, logoWidth, logoHeight);
-                    y += logoHeight + 8;
-                    generateRestOfPDF();
-                };
-            } else {
-                generateRestOfPDF();
-            }
-        };
+                await new Promise(resolve => img.onload = resolve); // Wait for image to load to get dimensions
 
-        const generateRestOfPDF = () => {
-            // 2. Seller Name (Title)
+                const logoMaxWidth = 40;
+                const aspectRatio = img.width / img.height;
+                const logoWidth = Math.min(logoMaxWidth, img.width);
+                const logoHeight = logoWidth / aspectRatio;
+
+                doc.addImage(logoDataURL, 'PNG', pageWidth / 2 - logoWidth / 2, y, logoWidth, logoHeight);
+                y += logoHeight + 8;
+            }
+
+            // --- 2. Add Seller Name ---
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(22);
+            doc.setFontSize(20);
             doc.text(sellerName, pageWidth / 2, y, { align: 'center' });
             y += 12;
 
-            // 3. Sub-details (Date, Receipt ID, Buyer)
+            // --- 3. Add Receipt Details ---
             doc.setFont('helvetica', 'normal');
-            doc.setFontSize(11);
+            doc.setFontSize(10);
             doc.text(`Date: ${receiptDate}`, margin, y);
             doc.text(`Receipt ID: ${receiptId}`, pageWidth - margin, y, { align: 'right' });
-            y += 7;
+            y += lineHeight;
             if (buyerName) {
                 doc.text(`Bill to: ${buyerName}`, margin, y);
-                y += 7;
+                y += lineHeight;
             }
             y += 5;
 
-            // 4. Line separator
+            // --- 4. Add Table Header ---
             doc.setDrawColor(180);
             doc.line(margin, y, pageWidth - margin, y);
-            y += 8;
-
-            // 5. Table Header
+            y += lineHeight + rowGap;
             doc.setFont('helvetica', 'bold');
             doc.text('Item Description', margin, y);
-            doc.text('Price (₦)', pageWidth - margin, y, { align: 'right' });
-            y += 7;
-            doc.setDrawColor(220);
+            doc.text('Price', priceColumnX, y, { align: 'right' });
+            y += lineHeight;
             doc.line(margin, y, pageWidth - margin, y);
-            y += 8;
+            y += rowGap;
 
-            // 6. Table Items
+            // --- 5. Add Table Items (with dynamic row height) ---
             doc.setFont('helvetica', 'normal');
             let total = 0;
             const itemRows = itemList.querySelectorAll('.item-row');
+
             itemRows.forEach(row => {
                 const name = row.querySelector('.item-name-input').value || 'Unnamed Item';
                 const price = parseFloat(row.querySelector('.item-price-input').value) || 0;
                 total += price;
 
-                doc.text(name, margin, y);
-                doc.text(`₦${price.toFixed(2)}`, pageWidth - margin, y, { align: 'right' });
-                y += 8;
+                // This splits the text into multiple lines if it's too long
+                const nameLines = doc.splitTextToSize(name, itemColumnWidth);
+                const rowHeight = nameLines.length * lineHeight;
+                
+                // Check if there is enough space for this item on the current page
+                if (y + rowHeight > pageHeight - margin) {
+                    doc.addPage();
+                    y = margin;
+                }
+
+                doc.text(nameLines, margin, y);
+                doc.text(`₦${price.toFixed(2)}`, priceColumnX, y, { align: 'right' });
+                y += rowHeight + rowGap;
             });
 
-            // 7. Total
-            doc.setDrawColor(180);
-            doc.line(margin, y, pageWidth - margin, y);
-            y += 8;
+            // --- 6. Add Total ---
+            y += lineHeight;
+            doc.setDrawColor(0); // Black line for total
+            doc.line(priceColumnX - 10, y, pageWidth - margin, y);
+            y += lineHeight + rowGap;
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(14);
+            doc.setFontSize(12);
             doc.text('Total', margin, y);
-            doc.text(`₦${total.toFixed(2)}`, pageWidth - margin, y, { align: 'right' });
+            doc.text(`₦${total.toFixed(2)}`, priceColumnX, y, { align: 'right' });
             y += 15;
 
-            // 8. Notes
+            // --- 7. Add Notes ---
             if (notes) {
-                doc.setFont('helvetica', 'italic');
-                doc.setFontSize(10);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(9);
                 doc.setTextColor(100);
-                const splitNotes = doc.splitTextToSize(notes, pageWidth - (margin * 2));
-                doc.text(splitNotes, margin, y);
+                const notesLines = doc.splitTextToSize(notes, contentWidth);
+                doc.text(notesLines, margin, y);
             }
-
-            // 9. Footer
+            
+            // --- 8. Add Footer ---
             doc.setFontSize(9);
             doc.setTextColor(150);
-            doc.text(`Generated with ReceiptGenie`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+            doc.text('Generated with ReceiptGenie', pageWidth / 2, pageHeight - 10, { align: 'center' });
 
-            // --- Save the PDF ---
+            // --- 9. Save the PDF ---
             const pdfFileName = `Receipt_${sellerName.replace(/ /g, '_')}_${receiptId}.pdf`;
             doc.save(pdfFileName);
-        }
 
-        if (logoFile) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                addLogoAndContinue(e.target.result);
-            }
-            reader.readAsDataURL(logoFile);
-        } else {
-            addLogoAndContinue(null);
+        } catch (error) {
+            console.error("Failed to generate PDF:", error);
+            alert("An error occurred while generating the PDF. Please check the console for details.");
         }
     }
 });
