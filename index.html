@@ -8,13 +8,13 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Poppins:wght@600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
     <main class="app-container">
-        
+
         <header class="app-header">
             <h1 class="app-title">🧾 ReceiptGenie</h1>
             <p class="app-subtitle">Create and download professional receipts in seconds.</p>
@@ -24,7 +24,18 @@
 
             <section class="form-section">
                 <form id="receipt-form" action="#" method="POST">
-                    
+
+                    <div class="form-card">
+                        <h2 class="form-card-title">Logo (Optional)</h2>
+                        <div class="form-group">
+                            <label for="logo-upload">Upload Business Logo</label>
+                            <input type="file" id="logo-upload" accept="image/png, image/jpeg">
+                            <div id="logo-preview-container" style="margin-top: 1rem; display: none;">
+                                <img id="logo-preview" src="#" alt="Logo Preview" style="max-width: 150px; max-height: 80px; height: auto;">
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="form-card">
                         <h2 class="form-card-title">Seller Details</h2>
                         <div class="form-group">
@@ -78,6 +89,9 @@
                 <div class="preview-container">
                     <h2 class="preview-title">Live Preview</h2>
                     <div id="receipt-preview" aria-live="polite">
+                        <div id="preview-logo-container" style="text-align: center; margin-bottom: 1rem; display: none;">
+                            <img id="preview-logo" src="#" alt="Logo Preview" style="max-width: 150px; max-height: 80px; height: auto;">
+                        </div>
                         <header class="receipt-header">
                             <h3 id="preview-seller-name">BUSINESS NAME</h3>
                         </header>
@@ -105,13 +119,13 @@
                             <tbody id="preview-item-list">
                                 <tr>
                                     <td>Sample Item</td>
-                                    <td class="text-right">$0.00</td>
+                                    <td class="text-right">₦0.00</td>
                                 </tr>
                             </tbody>
                             <tfoot>
                                 <tr class="total-row">
                                     <td><strong>Total</strong></td>
-                                    <td class="text-right"><strong id="preview-total">$0.00</strong></td>
+                                    <td class="text-right"><strong id="preview-total">₦0.00</strong></td>
                                 </tr>
                             </tfoot>
                         </table>
