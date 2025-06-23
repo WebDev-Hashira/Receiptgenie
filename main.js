@@ -137,8 +137,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * REWRITTEN PDF GENERATION FUNCTION
-     * Generates and downloads a PDF with a clean, dynamic layout.
+     * REVERTED PDF GENERATION FUNCTION
+     * Uses the simpler, preferred layout and integrates the logo.
      */
     async function downloadReceiptAsPDF() {
         try {
@@ -155,111 +155,102 @@ document.addEventListener('DOMContentLoaded', () => {
             const logoDataURL = await loadImage(logoFile);
 
             // --- Document Layout Constants ---
-            const pageWidth = doc.internal.pageSize.getWidth();
             const pageHeight = doc.internal.pageSize.getHeight();
+            const pageWidth = doc.internal.pageSize.getWidth();
             const margin = 15;
-            const contentWidth = pageWidth - margin * 2;
-            const priceColumnX = contentWidth * 0.75 + margin; // Price starts at 75% of content width
-            const itemColumnWidth = contentWidth * 0.70; // Item description can take up 70% of width
-            const lineHeight = 5; // mm
-            const rowGap = 3; // mm
-            let y = margin; // Current Y position
+            let y = margin;
 
             // --- 1. Add Logo (if it exists) ---
             if (logoDataURL) {
                 const img = new Image();
                 img.src = logoDataURL;
-                await new Promise(resolve => img.onload = resolve); // Wait for image to load to get dimensions
+                await new Promise(resolve => img.onload = resolve);
 
                 const logoMaxWidth = 40;
                 const aspectRatio = img.width / img.height;
                 const logoWidth = Math.min(logoMaxWidth, img.width);
                 const logoHeight = logoWidth / aspectRatio;
 
-                doc.addImage(logoDataURL, 'PNG', pageWidth / 2 - logoWidth / 2, y, logoWidth, logoHeight);
+                doc.addImage(logoDataURL, 'JPEG', pageWidth / 2 - logoWidth / 2, y, logoWidth, logoHeight);
                 y += logoHeight + 8;
             }
 
-            // --- 2. Add Seller Name ---
+            // --- 2. Seller Name (Title) ---
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(20);
+            doc.setFontSize(22);
             doc.text(sellerName, pageWidth / 2, y, { align: 'center' });
             y += 12;
 
-            // --- 3. Add Receipt Details ---
+            // --- 3. Sub-details (Date, Receipt ID, Buyer) ---
             doc.setFont('helvetica', 'normal');
-            doc.setFontSize(10);
+            doc.setFontSize(11);
             doc.text(`Date: ${receiptDate}`, margin, y);
             doc.text(`Receipt ID: ${receiptId}`, pageWidth - margin, y, { align: 'right' });
-            y += lineHeight;
+            y += 7;
             if (buyerName) {
                 doc.text(`Bill to: ${buyerName}`, margin, y);
-                y += lineHeight;
+                y += 7;
             }
             y += 5;
 
-            // --- 4. Add Table Header ---
+            // --- 4. Line separator ---
             doc.setDrawColor(180);
             doc.line(margin, y, pageWidth - margin, y);
-            y += lineHeight + rowGap;
+            y += 8;
+
+            // --- 5. Table Header ---
             doc.setFont('helvetica', 'bold');
             doc.text('Item Description', margin, y);
-            doc.text('Price', priceColumnX, y, { align: 'right' });
-            y += lineHeight;
+            doc.text('Price (₦)', pageWidth - margin, y, { align: 'right' });
+            y += 7;
+            doc.setDrawColor(220);
             doc.line(margin, y, pageWidth - margin, y);
-            y += rowGap;
+            y += 8;
 
-            // --- 5. Add Table Items (with dynamic row height) ---
+            // --- 6. Table Items (Simple, fixed-height layout) ---
             doc.setFont('helvetica', 'normal');
             let total = 0;
             const itemRows = itemList.querySelectorAll('.item-row');
-
             itemRows.forEach(row => {
+                // Add a page break if content gets too long
+                if (y > pageHeight - margin * 2) {
+                    doc.addPage();
+                    y = margin;
+                }
                 const name = row.querySelector('.item-name-input').value || 'Unnamed Item';
                 const price = parseFloat(row.querySelector('.item-price-input').value) || 0;
                 total += price;
 
-                // This splits the text into multiple lines if it's too long
-                const nameLines = doc.splitTextToSize(name, itemColumnWidth);
-                const rowHeight = nameLines.length * lineHeight;
-                
-                // Check if there is enough space for this item on the current page
-                if (y + rowHeight > pageHeight - margin) {
-                    doc.addPage();
-                    y = margin;
-                }
-
-                doc.text(nameLines, margin, y);
-                doc.text(`₦${price.toFixed(2)}`, priceColumnX, y, { align: 'right' });
-                y += rowHeight + rowGap;
+                doc.text(name, margin, y);
+                doc.text(`₦${price.toFixed(2)}`, pageWidth - margin, y, { align: 'right' });
+                y += 8; // Use a fixed increment for consistent spacing
             });
-
-            // --- 6. Add Total ---
-            y += lineHeight;
-            doc.setDrawColor(0); // Black line for total
-            doc.line(priceColumnX - 10, y, pageWidth - margin, y);
-            y += lineHeight + rowGap;
+            
+            // --- 7. Total ---
+            doc.setDrawColor(180);
+            doc.line(margin, y, pageWidth - margin, y);
+            y += 8;
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(12);
+            doc.setFontSize(14);
             doc.text('Total', margin, y);
-            doc.text(`₦${total.toFixed(2)}`, priceColumnX, y, { align: 'right' });
+            doc.text(`₦${total.toFixed(2)}`, pageWidth - margin, y, { align: 'right' });
             y += 15;
 
-            // --- 7. Add Notes ---
+            // --- 8. Notes ---
             if (notes) {
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(9);
+                doc.setFont('helvetica', 'italic');
+                doc.setFontSize(10);
                 doc.setTextColor(100);
-                const notesLines = doc.splitTextToSize(notes, contentWidth);
-                doc.text(notesLines, margin, y);
+                const splitNotes = doc.splitTextToSize(notes, pageWidth - (margin * 2));
+                doc.text(splitNotes, margin, y);
             }
             
-            // --- 8. Add Footer ---
+            // --- 9. Footer ---
             doc.setFontSize(9);
             doc.setTextColor(150);
-            doc.text('Generated with ReceiptGenie', pageWidth / 2, pageHeight - 10, { align: 'center' });
+            doc.text(`Generated with ReceiptGenie`, pageWidth / 2, pageHeight - 10, { align: 'center' });
 
-            // --- 9. Save the PDF ---
+            // --- Save the PDF ---
             const pdfFileName = `Receipt_${sellerName.replace(/ /g, '_')}_${receiptId}.pdf`;
             doc.save(pdfFileName);
 
