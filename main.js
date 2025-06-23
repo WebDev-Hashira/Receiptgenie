@@ -117,11 +117,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         previewTotal.textContent = `₦${total.toFixed(2)}`;
     }
-
+    
     /**
-     * Converts a file to a base64 Data URL.
+     * Converts a file to a base64 Data URL to be used in the PDF.
      * @param {File} file The file to convert.
-     * @returns {Promise<string|null>} A promise that resolves with the data URL.
+     * @returns {Promise<string|null>} A promise that resolves with the data URL or null.
      */
     function loadImage(file) {
         return new Promise((resolve, reject) => {
@@ -137,8 +137,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * REVERTED PDF GENERATION FUNCTION
-     * Uses the simpler, preferred layout and integrates the logo.
+     * PDF GENERATION FUNCTION
+     * Uses the simple, original layout and integrates the optional logo.
      */
     async function downloadReceiptAsPDF() {
         try {
@@ -158,21 +158,22 @@ document.addEventListener('DOMContentLoaded', () => {
             const pageHeight = doc.internal.pageSize.getHeight();
             const pageWidth = doc.internal.pageSize.getWidth();
             const margin = 15;
-            let y = margin;
+            let y = margin; // This 'y' value will be updated as we add content
 
             // --- 1. Add Logo (if it exists) ---
             if (logoDataURL) {
                 const img = new Image();
                 img.src = logoDataURL;
+                // Wait for the image to load to get its dimensions
                 await new Promise(resolve => img.onload = resolve);
 
                 const logoMaxWidth = 40;
                 const aspectRatio = img.width / img.height;
                 const logoWidth = Math.min(logoMaxWidth, img.width);
                 const logoHeight = logoWidth / aspectRatio;
-
+                
                 doc.addImage(logoDataURL, 'JPEG', pageWidth / 2 - logoWidth / 2, y, logoWidth, logoHeight);
-                y += logoHeight + 8;
+                y += logoHeight + 8; // Move 'y' down past the logo
             }
 
             // --- 2. Seller Name (Title) ---
@@ -194,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
             y += 5;
 
             // --- 4. Line separator ---
-            doc.setDrawColor(180);
+            doc.setDrawColor(180); // Light grey
             doc.line(margin, y, pageWidth - margin, y);
             y += 8;
 
@@ -203,7 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
             doc.text('Item Description', margin, y);
             doc.text('Price (₦)', pageWidth - margin, y, { align: 'right' });
             y += 7;
-            doc.setDrawColor(220);
+            doc.setDrawColor(220); // Lighter grey
             doc.line(margin, y, pageWidth - margin, y);
             y += 8;
 
@@ -211,8 +212,9 @@ document.addEventListener('DOMContentLoaded', () => {
             doc.setFont('helvetica', 'normal');
             let total = 0;
             const itemRows = itemList.querySelectorAll('.item-row');
+
             itemRows.forEach(row => {
-                // Add a page break if content gets too long
+                // Add a new page if content overflows
                 if (y > pageHeight - margin * 2) {
                     doc.addPage();
                     y = margin;
@@ -223,7 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 doc.text(name, margin, y);
                 doc.text(`₦${price.toFixed(2)}`, pageWidth - margin, y, { align: 'right' });
-                y += 8; // Use a fixed increment for consistent spacing
+                y += 8; // This fixed increment creates the simple, consistent spacing you liked
             });
             
             // --- 7. Total ---
