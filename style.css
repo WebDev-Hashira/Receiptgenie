@@ -126,7 +126,6 @@ body {
 .form-group input[type="text"],
 .form-group input[type="number"],
 .form-group input[type="date"],
-.form-group input[type="file"],
 .form-group textarea {
     width: 100%;
     padding: 0.75rem;
@@ -225,9 +224,29 @@ textarea {
     overflow: hidden; /* For watermark */
 }
 
+/* THE WATERMARK - UPDATED RULE */
+#receipt-preview::before {
+    content: "Generated with ReceiptGenie";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-35deg);
+    font-size: 2.5rem; /* <-- REDUCED FONT SIZE */
+    font-weight: 700;
+    color: #000;
+    opacity: 0.08;
+    z-index: 1;
+    white-space: nowrap;
+    pointer-events: none;
+    width: 150%; /* <-- ADDED WIDTH TO ENSURE IT SPANS */
+    text-align: center; /* <-- ADDED TO CENTER TEXT IN THE WIDER ELEMENT */
+}
+
 .receipt-header {
     text-align: center;
-    margin-bottom: 1.5rem;
+    margin-bottom: 2rem;
+    position: relative;
+    z-index: 2;
 }
 
 #preview-seller-name {
@@ -241,9 +260,11 @@ textarea {
 .receipt-details {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 1.5rem;
+    margin-bottom: 2rem;
     padding-bottom: 1rem;
     border-bottom: 1px solid var(--border-color);
+    position: relative;
+    z-index: 2;
 }
 
 .detail-item {
@@ -256,7 +277,9 @@ textarea {
 .receipt-table {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+    z-index: 2;
 }
 
 .receipt-table th, .receipt-table td {
@@ -288,9 +311,11 @@ textarea {
 
 .receipt-footer {
     text-align: center;
-    margin-top: 1.5rem;
+    margin-top: 2rem;
     font-size: 0.9rem;
     color: var(--text-light);
+    position: relative;
+    z-index: 2;
 }
 
 .download-button {
